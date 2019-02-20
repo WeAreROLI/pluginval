@@ -74,7 +74,7 @@ private:
     void setStatus (Status newStatus)
     {
         status = newStatus;
-        MessageManager::getInstance()->callAsync ([sp = SafePointer<Component> (this)] () mutable { if (sp != nullptr) sp->repaint(); });
+        MessageManager::callAsync ([sp = SafePointer<Component> (this)] () mutable { if (sp != nullptr) sp->repaint(); });
     }
 
     void changeListenerCallback (ChangeBroadcaster*) override
@@ -240,8 +240,8 @@ private:
                                               getAppPreferences().getFile().getSiblingFile ("PluginsListDeadMansPedal"),
                                               &getAppPreferences() };
     ConsoleComponent console { validator };
-    TextButton testSelectedButton { "Test Selected" }, testAllButton { "Test All" },
-               clearButton { "Clear log" }, saveButton { "Save log" }, optionsButton { "Options" };
+    TextButton testSelectedButton { "Test Selected" }, testAllButton { "Test All" }, testFileButton { "Test File" },
+               clearButton { "Clear Log" }, saveButton { "Save Log" }, optionsButton { "Options" };
     Slider strictnessSlider;
     Label strictnessLabel { {}, "Strictness Level" };
     ConnectionStatus connectionStatus { validator };

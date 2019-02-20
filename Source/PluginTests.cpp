@@ -14,6 +14,7 @@
 
 #include "PluginTests.h"
 #include "TestUtilities.h"
+#include <random>
 
 namespace
 {
@@ -45,7 +46,7 @@ namespace
 }
 
 PluginTests::PluginTests (const String& fileOrIdentifier, Options opts)
-    : UnitTest ("PluginValidator"),
+    : UnitTest ("pluginval"),
       fileOrID (fileOrIdentifier),
       options (opts)
 {
@@ -59,26 +60,43 @@ PluginTests::PluginTests (const PluginDescription& desc, Options opts)
     typesFound.add (new PluginDescription (desc));
 }
 
+String PluginTests::getFileOrID() const
+{
+    if (fileOrID.isNotEmpty())
+        return fileOrID;
+
+    if (auto first = typesFound.getFirst())
+        return first->createIdentifierString();
+
+    return {};
+}
+
 void PluginTests::logVerboseMessage (const String& message)
 {
     // We still need to send an empty message or the test may timeout
     logMessage (options.verbose ? message : String());
 }
 
+void PluginTests::resetTimeout()
+{
+    logMessage (String());
+}
+
 void PluginTests::runTest()
 {
     logMessage ("Validation started: " + Time::getCurrentTime().toString (true, true) + "\n");
+    logMessage ("Strictness level: " + String (options.strictnessLevel));
 
     if (fileOrID.isNotEmpty())
     {
         beginTest ("Scan for known types: " + fileOrID);
 
         WaitableEvent completionEvent;
-        MessageManager::getInstance()->callAsync ([&, this]() mutable
-                                                  {
-                                                      knownPluginList.scanAndAddDragAndDroppedFiles (formatManager, StringArray (fileOrID), typesFound);
-                                                      completionEvent.signal();
-                                                  });
+        MessageManager::callAsync ([&, this]() mutable
+                                   {
+                                       knownPluginList.scanAndAddDragAndDroppedFiles (formatManager, StringArray (fileOrID), typesFound);
+                                       completionEvent.signal();
+                                   });
         completionEvent.wait();
 
         logMessage ("Num types found: " + String (typesFound.size()));
@@ -101,8 +119,9 @@ std::unique_ptr<AudioPluginInstance> PluginTests::testOpenPlugin (const PluginDe
 
 void PluginTests::testType (const PluginDescription& pd)
 {
-    const auto idString = pd.createIdentifierString();
-    logMessage ("\nTesting plugin: " + idString);
+    StopwatchTimer totalTimer;
+    logMessage ("\nTesting plugin: " + pd.createIdentifierString());
+    logMessage (pd.manufacturerName + ": " + pd.name + " v" + pd.version);
 
     {
         beginTest ("Open plugin (cold)");
@@ -118,36 +137,62 @@ void PluginTests::testType (const PluginDescription& pd)
         if (auto instance = testOpenPlugin (pd))
         {
             logMessage ("\nTime taken to open plugin (warm): " + sw.getDescription());
-            Thread::sleep (150); // Allow time for plugin async initialisation
+            logMessage (String ("Running tests 123 times").replace ("123", String (options.numRepeats)));
 
-            for (auto t : PluginTest::getAllTests())
+            // This sleep is here to allow time for plugin async initialisation as in most cases
+            // plugins will be added to tracks and then be played a little time later. This sleep
+            // allows time for this initialisation for tests otherwise they might complete without
+            // actually having processed anything.
+            // The exception to this is if the plugin is being rendered there's likely to be no gap
+            // between construction, initialisation and processing. For this case, plugins should
+            // check AudioProcessor::isNonRealtime and force initialisation if rendering.
+            Thread::sleep (150);
+            auto r = getRandom();
+
+            for (int testRun = 0; testRun < options.numRepeats; ++testRun)
             {
-                if (options.strictnessLevel < t->strictnessLevel
-                    || (! options.withGui && t->requiresGui()))
-                    continue;
+                if (options.numRepeats > 1)
+                    logMessage ("\nTest run: " + String (testRun + 1));
 
-                StopwatchTimer sw2;
-                beginTest (t->name);
+                Array<PluginTest*> testsToRun = PluginTest::getAllTests();
 
-                if (t->needsToRunOnMessageThread())
+                if (options.randomiseTestOrder)
                 {
-                    WaitableEvent completionEvent;
-                    MessageManager::getInstance()->callAsync ([&, this]() mutable
-                                                              {
-                                                                  t->runTest (*this, *instance);
-                                                                  completionEvent.signal();
-                                                              });
-                    completionEvent.wait();
-                }
-                else
-                {
-                    t->runTest (*this, *instance);
+                    std::mt19937 random (static_cast<unsigned int> (r.nextInt()));
+                    std::shuffle (testsToRun.begin(), testsToRun.end(), random);
                 }
 
-                logMessage ("\nTime taken to run test: " + sw2.getDescription());
+                for (auto t : testsToRun)
+                {
+                    if (options.strictnessLevel < t->strictnessLevel
+                        || (! options.withGUI && t->requiresGUI()))
+                       continue;
+
+                    StopwatchTimer sw2;
+                    beginTest (t->name);
+
+                    if (t->needsToRunOnMessageThread())
+                    {
+                        WaitableEvent completionEvent;
+                        MessageManager::callAsync ([&, this]() mutable
+                                                   {
+                                                       t->runTest (*this, *instance);
+                                                       completionEvent.signal();
+                                                   });
+                        completionEvent.wait();
+                    }
+                    else
+                    {
+                        t->runTest (*this, *instance);
+                    }
+
+                    logMessage ("\nTime taken to run test: " + sw2.getDescription());
+                }
             }
 
             deletePluginAsync (std::move (instance));
         }
     }
+
+    logMessage ("\nTime taken to run all tests: " + totalTimer.getDescription());
 }

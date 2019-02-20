@@ -26,6 +26,16 @@ int getStrictnessLevel()
     return jlimit (1, 10, getAppPreferences().getIntValue ("strictnessLevel", 5));
 }
 
+void setRandomSeed (int64 newSeed)
+{
+    getAppPreferences().setValue ("randomSeed", newSeed);
+}
+
+int64 getRandomSeed()
+{
+    return getAppPreferences().getIntValue ("randomSeed", 0);
+}
+
 void setValidateInProcess (bool shouldValidateInProcess)
 {
     getAppPreferences().setValue ("validateInProcess", shouldValidateInProcess);
@@ -56,17 +66,69 @@ bool getVerboseLogging()
     return getAppPreferences().getBoolValue ("verbose", false);
 }
 
+void setNumRepeats (int numRepeats)
+{
+    if (numRepeats >= 1)
+        getAppPreferences().setValue ("numRepeats", numRepeats);
+}
+
+int getNumRepeats()
+{
+    return jmax (1, getAppPreferences().getIntValue ("numRepeats", 1));
+}
+
+void setRandomiseTests (bool shouldRandomiseTests)
+{
+    getAppPreferences().setValue ("randomiseTests", shouldRandomiseTests);
+}
+
+bool getRandomiseTests()
+{
+    return getAppPreferences().getBoolValue ("randomiseTests", false);
+}
+
+File getOutputDir()
+{
+    return getAppPreferences().getValue ("outputDir", String());
+}
+
+
 PluginTests::Options getTestOptions()
 {
     PluginTests::Options options;
     options.strictnessLevel = getStrictnessLevel();
+    options.randomSeed = getRandomSeed();
     options.timeoutMs = getTimeoutMs();
     options.verbose = getVerboseLogging();
+    options.numRepeats = getNumRepeats();
+    options.randomiseTestOrder = getRandomiseTests();
+    options.outputDir = getOutputDir();
 
     return options;
 }
 
 //==============================================================================
+void showRandomSeedDialog()
+{
+    const String message = TRANS("Set the random seed to use for the tests, useful for replicating issues");
+    std::shared_ptr<AlertWindow> aw (LookAndFeel::getDefaultLookAndFeel().createAlertWindow (TRANS("Set Random Seed"), message,
+                                                                                             TRANS("OK"), TRANS("Cancel"), String(),
+                                                                                             AlertWindow::QuestionIcon, 2, nullptr));
+    aw->addTextEditor ("randomSeed", String (getRandomSeed()));
+    aw->enterModalState (true, ModalCallbackFunction::create ([aw] (int res)
+                                                              {
+                                                                  if (res == 1)
+                                                                  {
+                                                                      if (auto te = aw->getTextEditor ("randomSeed"))
+                                                                      {
+                                                                          auto seedString = te->getText();
+                                                                          setRandomSeed (seedString.startsWith ("0x") ? seedString.getHexValue64()
+                                                                                                                      : seedString.getLargeIntValue());
+                                                                      }
+                                                                  }
+                                                              }));
+}
+
 void showTimeoutDialog()
 {
     const String message = TRANS("Set the duration in milliseconds after which to kill the validation if there has been no output from it");
@@ -79,6 +141,50 @@ void showTimeoutDialog()
                                                                   if (res == 1)
                                                                       if (auto te = aw->getTextEditor ("timeoutMs"))
                                                                           setTimeoutMs (te->getText().getLargeIntValue());
+                                                              }));
+}
+
+void showNumRepeatsDialog()
+{
+    const String message = TRANS("Set the number of times the tests will be repeated");
+    std::shared_ptr<AlertWindow> aw (LookAndFeel::getDefaultLookAndFeel().createAlertWindow (TRANS("Set Number of Repeats"), message,
+                                                                                             TRANS("OK"), TRANS("Cancel"), String(),
+                                                                                             AlertWindow::QuestionIcon, 2, nullptr));
+    aw->addTextEditor ("repeats", String (getNumRepeats()));
+    aw->enterModalState (true, ModalCallbackFunction::create ([aw] (int res)
+                                                              {
+                                                                  if (res == 1)
+                                                                      if (auto te = aw->getTextEditor ("repeats"))
+                                                                          setNumRepeats (te->getText().getIntValue());
+                                                              }));
+}
+
+void showOutputDirDialog()
+{
+    String message = TRANS("Set a desintation directory to place log files");
+    auto dir = getOutputDir();
+
+    if (dir.getFullPathName().isNotEmpty())
+        message << "\n\n" << dir.getFullPathName().quoted();
+    else
+        message << "\n\n" << "\"None set\"";
+
+    std::shared_ptr<AlertWindow> aw (LookAndFeel::getDefaultLookAndFeel().createAlertWindow (TRANS("Set Log File Directory"), message,
+                                                                                             TRANS("Choose dir"), TRANS("Cancel"), TRANS("Don't save logs"),
+                                                                                             AlertWindow::QuestionIcon, 3, nullptr));
+    aw->enterModalState (true, ModalCallbackFunction::create ([aw] (int res)
+                                                              {
+                                                                  if (res == 3)
+                                                                      getAppPreferences().setValue ("outputDir", String());
+
+                                                                  if (res == 1)
+                                                                  {
+                                                                      const auto defaultDir = File::getSpecialLocation (File::userDesktopDirectory).getChildFile ("pluginval logs").getFullPathName();
+                                                                      FileChooser fc (TRANS("Directory to save log files"), defaultDir);
+
+                                                                      if (fc.browseForDirectory())
+                                                                          getAppPreferences().setValue ("outputDir", fc.getResult().getFullPathName());
+                                                                  }
                                                               }));
 }
 
@@ -99,6 +205,7 @@ MainComponent::MainComponent (Validator& v)
     addAndMakeVisible (optionsButton);
     addAndMakeVisible (testSelectedButton);
     addAndMakeVisible (testAllButton);
+    addAndMakeVisible (testFileButton);
     addAndMakeVisible (strictnessLabel);
     addAndMakeVisible (strictnessSlider);
 
@@ -125,6 +232,22 @@ MainComponent::MainComponent (Validator& v)
 
             validator.setValidateInProcess (getValidateInProcess());
             validator.validate (plugins, getTestOptions());
+        };
+
+    testFileButton.onClick = [this]
+        {
+            FileChooser fc (TRANS("Browse for Plug-in File"),
+                            getAppPreferences().getValue ("lastPluginLocation", File::getSpecialLocation (File::userApplicationDataDirectory).getFullPathName()),
+                            "*.vst;*.vst3;*.dll;*.component");
+
+            if (fc.browseForFileToOpen())
+            {
+                const auto path = fc.getResult().getFullPathName();
+                getAppPreferences().setValue ("lastPluginLocation", path);
+
+                validator.setValidateInProcess (getValidateInProcess());
+                validator.validate (path, getTestOptions());
+            }
         };
 
     clearButton.onClick = [this]
@@ -159,15 +282,23 @@ MainComponent::MainComponent (Validator& v)
             enum MenuItem
             {
                 validateInProcess = 1,
+                showRandomSeed,
                 showTimeout,
                 verboseLogging,
+                numRepeats,
+                randomise,
+                chooseOutputDir,
                 showSettingsDir
             };
 
             PopupMenu m;
             m.addItem (validateInProcess, TRANS("Validate in process"), true, getValidateInProcess());
+            m.addItem (showRandomSeed, TRANS("Set random seed (123)").replace ("123", "0x" + String::toHexString (getRandomSeed()) + "/" + String (getRandomSeed())));
             m.addItem (showTimeout, TRANS("Set timeout (123ms)").replace ("123", String (getTimeoutMs())));
             m.addItem (verboseLogging, TRANS("Verbose logging"), true, getVerboseLogging());
+            m.addItem (numRepeats, TRANS("Num repeats (123)").replace ("123", String (getNumRepeats())));
+            m.addItem (randomise, TRANS("Randomise tests"), true, getRandomiseTests());
+            m.addItem (chooseOutputDir, TRANS("Choose a location for log files"));
             m.addSeparator();
             m.addItem (showSettingsDir, TRANS("Show settings folder"));
             m.showMenuAsync (PopupMenu::Options().withTargetComponent (&optionsButton),
@@ -178,6 +309,10 @@ MainComponent::MainComponent (Validator& v)
                                      setValidateInProcess (! getValidateInProcess());
                                      sp->validator.setValidateInProcess (getValidateInProcess());
                                  }
+                                 else if (res == showRandomSeed)
+                                 {
+                                     showRandomSeedDialog();
+                                 }
                                  else if (res == showTimeout)
                                  {
                                      showTimeoutDialog();
@@ -185,6 +320,18 @@ MainComponent::MainComponent (Validator& v)
                                  else if (res == verboseLogging)
                                  {
                                      setVerboseLogging (! getVerboseLogging());
+                                 }
+                                 else if (res == numRepeats)
+                                 {
+                                     showNumRepeatsDialog();
+                                 }
+                                 else if (res == randomise)
+                                 {
+                                     setRandomiseTests (! getRandomiseTests());
+                                 }
+                                 else if (res == chooseOutputDir)
+                                 {
+                                     showOutputDirDialog();
                                  }
                                  else if (res == showSettingsDir)
                                  {
@@ -227,13 +374,14 @@ void MainComponent::resized()
     auto r = getLocalBounds();
 
     auto bottomR = r.removeFromBottom (28);
-    saveButton.setBounds (bottomR.removeFromRight (100).reduced (2));
-    clearButton.setBounds (bottomR.removeFromRight (100).reduced (2));
-    optionsButton.setBounds (bottomR.removeFromRight (80).reduced (2));
+    saveButton.setBounds (bottomR.removeFromRight (80).reduced (2));
+    clearButton.setBounds (bottomR.removeFromRight (80).reduced (2));
+    optionsButton.setBounds (bottomR.removeFromRight (70).reduced (2));
 
     connectionStatus.setBounds (bottomR.removeFromLeft (bottomR.getHeight()).reduced (2));
-    testSelectedButton.setBounds (bottomR.removeFromLeft (130).reduced (2));
-    testAllButton.setBounds (bottomR.removeFromLeft (130).reduced (2));
+    testSelectedButton.setBounds (bottomR.removeFromLeft (110).reduced (2));
+    testAllButton.setBounds (bottomR.removeFromLeft (110).reduced (2));
+    testFileButton.setBounds (bottomR.removeFromLeft (110).reduced (2));
 
     strictnessLabel.setBounds (bottomR.removeFromLeft (110).reduced (2));
     strictnessSlider.setBounds (bottomR.removeFromLeft (100).reduced (2));

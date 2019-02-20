@@ -19,24 +19,25 @@
 struct FuzzParametersTest  : public PluginTest
 {
     FuzzParametersTest()
-        : PluginTest ("Fuzz parameters", 6, getDefaultRequirements())
+        : PluginTest ("Fuzz parameters", 6)
     {
     }
 
     void runTest (PluginTests& ut, AudioPluginInstance& instance) override
     {
-        for (auto parameter : instance.getParameters())
+        for (auto parameter : getNonBypassAutomatableParameters (instance))
             fuzzTestParameter (ut, *parameter);
     }
 
 private:
-    void fuzzTestParameter (UnitTest& ut, AudioProcessorParameter& parameter)
+    void fuzzTestParameter (PluginTests& ut, AudioProcessorParameter& parameter)
     {
-        ut.logMessage (String ("Fuzz testing parameter: ") + String (parameter.getParameterIndex()) + " - " + parameter.getName (512));
+        auto r = ut.getRandom();
+        ut.logVerboseMessage (String ("Fuzz testing parameter: ") + String (parameter.getParameterIndex()) + " - " + parameter.getName (512));
 
         for (int i = 0; i < 5; ++i)
         {
-            const float value = ut.getRandom().nextFloat();
+            const float value = r.nextFloat();
 
             parameter.setValue (value);
             const float v = parameter.getValue();

@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include <JuceHeader.h>
+
 //==============================================================================
 struct StopwatchTimer
 {
@@ -36,6 +38,20 @@ struct StopwatchTimer
 private:
     uint32 startTime;
 };
+
+
+//==============================================================================
+/** Returns the set of automatable parameters excluding the bypass parameter. */
+static inline Array<AudioProcessorParameter*> getNonBypassAutomatableParameters (AudioPluginInstance& instance)
+{
+    Array<AudioProcessorParameter*> parameters;
+
+    for (auto p : instance.getParameters())
+        if (p->isAutomatable() && p != instance.getBypassParameter())
+            parameters.add (p);
+
+    return parameters;
+}
 
 //==============================================================================
 template<typename UnaryFunction>
@@ -96,16 +112,102 @@ static inline int countSubnormals (AudioBuffer<float>& ab) noexcept
     return count;
 }
 
-static inline void addNoteOn (MidiBuffer& mb, int channel, int noteNumber, int sample) noexcept
+static inline void addNoteOn (MidiBuffer& mb, int channel, int noteNumber, int sample)
 {
     mb.addEvent (juce::MidiMessage::noteOn (channel, noteNumber, 0.5f), sample);
 }
 
-static inline void addNoteOff (MidiBuffer& mb, int channel, int noteNumber, int sample) noexcept
+static inline void addNoteOff (MidiBuffer& mb, int channel, int noteNumber, int sample)
 {
     mb.addEvent (juce::MidiMessage::noteOff (channel, noteNumber, 0.5f), sample);
 }
 
+static inline float getParametersSum (AudioPluginInstance& instance)
+{
+    float value = 0.0f;
+
+    for (auto parameter : getNonBypassAutomatableParameters (instance))
+        value += parameter->getValue();
+
+    return value;
+}
+
+
+//==============================================================================
+//==============================================================================
+static std::unique_ptr<AudioProcessorEditor> createAndShowEditorOnMessageThread (AudioPluginInstance& instance)
+{
+    std::unique_ptr<AudioProcessorEditor> editor;
+
+    if (MessageManager::getInstance()->isThisTheMessageThread())
+    {
+        if (! instance.hasEditor())
+            return {};
+
+        jassert (instance.getActiveEditor() == nullptr);
+        editor.reset (instance.createEditor());
+
+        if (editor)
+        {
+            editor->addToDesktop (0);
+            editor->setVisible (true);
+
+            // Pump the message loop for a couple of seconds for the window to initialise itself
+            MessageManager::getInstance()->runDispatchLoopUntil (200);
+        }
+    }
+    else
+    {
+        WaitableEvent waiter;
+        MessageManager::callAsync ([&]
+                                   {
+                                       editor = createAndShowEditorOnMessageThread (instance);
+                                       waiter.signal();
+                                   });
+        waiter.wait();
+    }
+
+    return editor;
+}
+
+static void deleteEditorOnMessageThread (std::unique_ptr<AudioProcessorEditor> editor)
+{
+    if (MessageManager::getInstance()->isThisTheMessageThread())
+    {
+        editor.reset();
+        return;
+    }
+
+    WaitableEvent waiter;
+    MessageManager::callAsync ([&]
+                               {
+                                   editor.reset();
+                                   waiter.signal();
+                               });
+    waiter.wait();
+}
+
+//==============================================================================
+/** Creates an editor for the plugin on the message thread, shows it on screen and
+    deletes it on the message thread upon destruction.
+*/
+struct ScopedEditorShower
+{
+    ScopedEditorShower (AudioPluginInstance& instance)
+        : editor (createAndShowEditorOnMessageThread (instance))
+    {
+    }
+
+    ~ScopedEditorShower()
+    {
+        deleteEditorOnMessageThread (std::move (editor));
+    }
+
+    std::unique_ptr<AudioProcessorEditor> editor;
+};
+
+
+//==============================================================================
 //==============================================================================
 struct ScopedPluginDeinitialiser
 {
@@ -126,6 +228,8 @@ struct ScopedPluginDeinitialiser
     const int blockSize;
 };
 
+
+//==============================================================================
 //==============================================================================
 struct ScopedBusesLayout
 {
@@ -141,4 +245,87 @@ struct ScopedBusesLayout
 
     AudioProcessor& processor;
     AudioProcessor::BusesLayout currentLayout;
+};
+
+
+//==============================================================================
+/**
+    Used to enable intercepting of allocations using new, new[], delete and
+    delete[] on the calling thread.
+*/
+struct AllocatorInterceptor
+{
+    AllocatorInterceptor() = default;
+
+    void disableAllocations()
+    {
+        allocationsAllowed.store (false);
+    }
+
+    void enableAllocations()
+    {
+        allocationsAllowed.store (true);
+    }
+
+    bool isAllowedToAllocate() const
+    {
+        return allocationsAllowed.load();
+    }
+
+    //==============================================================================
+    void logAllocationViolation()
+    {
+        violationOccured.store (true);
+        ++numAllocationViolations;
+    }
+
+    int getNumAllocationViolations() const noexcept
+    {
+        return numAllocationViolations;
+    }
+
+    bool getAndClearAllocationViolation() noexcept
+    {
+        return violationOccured.exchange (false);
+    }
+
+    int getAndClearNumAllocationViolations() noexcept
+    {
+        return numAllocationViolations.exchange (0);
+    }
+
+    //==============================================================================
+    enum class ViolationBehaviour
+    {
+        none,
+        logToCerr,
+        throwException
+    };
+
+    static void setViolationBehaviour (ViolationBehaviour) noexcept;
+    static ViolationBehaviour getViolationBehaviour() noexcept;
+
+private:
+    std::atomic<bool> allocationsAllowed { true };
+    std::atomic<int> numAllocationViolations { 0 };
+    std::atomic<bool> violationOccured { false };
+    static std::atomic<ViolationBehaviour> violationBehaviour;
+};
+
+//==============================================================================
+/** Returns an AllocatorInterceptor for the current thread. */
+AllocatorInterceptor& getAllocatorInterceptor();
+
+//==============================================================================
+/**
+    Helper class to log allocations on the current thread.
+    Put one on stack at the point for which you want to detect allocations.
+*/
+struct ScopedAllocationDisabler
+{
+    /** Disables allocations on the current thread. */
+    ScopedAllocationDisabler();
+
+    /** Re-enables allocations on the current thread. */
+    ~ScopedAllocationDisabler();
 };
