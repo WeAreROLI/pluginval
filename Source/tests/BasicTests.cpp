@@ -402,8 +402,6 @@ struct BackgroundThreadStateTest    : public PluginTest
         std::unique_ptr<AudioProcessorEditor> editor;
         MessageManager::getInstance()->callAsync ([&]
                                                   {
-                                                      std::cout << "Async message delivered! \n"; // Remove, debugging hangs on Jenkins
-
                                                       editor.reset (instance.createEditor());
                                                       ut.expect (editor != nullptr, "Unable to create editor");
 
