@@ -213,7 +213,7 @@ static PluginStateTest pluginStateTest;
 struct PluginStateTestRestoration   : public PluginTest
 {
     PluginStateTestRestoration()
-        : PluginTest ("Plugin state restoration", 6)
+        : PluginTest ("Plugin state restoration", 5)
     {
     }
 
@@ -236,22 +236,25 @@ struct PluginStateTestRestoration   : public PluginTest
         // Restore original state
         instance.setStateInformation (originalState.getData(), (int) originalState.getSize());
 
-        const auto newParams = getParameterValues (instance);
-
-        ut.expect (originalParams.size() == newParams.size(),
-                   "Different size of parameter list?!");
-
-        for (int i = 0; i < originalParams.size(); ++i)
+        if (strictnessLevel >= 6)
         {
-            ut.expect (originalParams[i].second == newParams[i].second,
-                       "Different " + originalParams[i].first + " parameter value after setStateInformation! "
-                       + "Original: " + juce::String (originalParams[i].second, 5)
-                       + ", New: " + juce::String (newParams[i].second, 5));
-        }
+            const auto newParams = getParameterValues (instance);
 
-        // Check parameter values return to original
-        ut.expectWithinAbsoluteError (getParametersSum (instance), originalParamsSum, 0.1f,
-                                      "Parameters not restored on setStateInformation");
+            ut.expect (originalParams.size() == newParams.size(),
+                       "Different size of parameter list?!");
+
+            for (int i = 0; i < originalParams.size(); ++i)
+            {
+                ut.expect (originalParams[i].second == newParams[i].second,
+                           "Different " + originalParams[i].first + " parameter value after setStateInformation! "
+                           + "Original: " + juce::String (originalParams[i].second, 5)
+                           + ", New: " + juce::String (newParams[i].second, 5));
+            }
+
+            // Check parameter values return to original
+            ut.expectWithinAbsoluteError (getParametersSum (instance), originalParamsSum, 0.1f,
+                                          "Parameters not restored on setStateInformation");
+        }
 
         if (strictnessLevel >= 8)
         {
