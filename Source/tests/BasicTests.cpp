@@ -227,6 +227,7 @@ struct PluginStateTestRestoration   : public PluginTest
 
         // Check current sum of parameter values
         const float originalParamsSum = getParametersSum (instance);
+        const auto originalParams = getParameterValues (instance);
 
         // Set random parameter values
         for (auto parameter : getNonBypassAutomatableParameters (instance))
@@ -234,6 +235,19 @@ struct PluginStateTestRestoration   : public PluginTest
 
         // Restore original state
         instance.setStateInformation (originalState.getData(), (int) originalState.getSize());
+
+        const auto newParams = getParameterValues (instance);
+
+        ut.expect (originalParams.size() == newParams.size(),
+                   "Different size of parameter list?!");
+
+        for (int i = 0; i < originalParams.size(); ++i)
+        {
+            ut.expect (originalParams[i].second == newParams[i].second,
+                       "Different " + originalParams[i].first + " parameter value after setStateInformation! "
+                       + "Original: " + juce::String (originalParams[i].second, 5)
+                       + ", New: " + juce::String (newParams[i].second, 5));
+        }
 
         // Check parameter values return to original
         ut.expectWithinAbsoluteError (getParametersSum (instance), originalParamsSum, 0.1f,

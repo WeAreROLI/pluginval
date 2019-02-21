@@ -132,6 +132,16 @@ static inline float getParametersSum (AudioPluginInstance& instance)
     return value;
 }
 
+static inline juce::Array<std::pair<juce::String, float>> getParameterValues (AudioPluginInstance& instance)
+{
+    juce::Array<std::pair<juce::String, float>> params;
+
+    for (auto parameter : getNonBypassAutomatableParameters (instance))
+        params.add ({ parameter->getName (30), parameter->getValue() });
+
+    return params;
+}
+
 
 //==============================================================================
 //==============================================================================
