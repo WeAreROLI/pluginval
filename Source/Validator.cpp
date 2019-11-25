@@ -151,7 +151,12 @@ File getDestinationFile (PluginTests& test)
 
 std::unique_ptr<FileOutputStream> createDestinationFileStream (PluginTests& test)
 {
-    std::unique_ptr<FileOutputStream> fos (getDestinationFile (test).createOutputStream());
+    auto file = getDestinationFile (test);
+
+    if (file == File())
+        return {};
+
+    std::unique_ptr<FileOutputStream> fos (file.createOutputStream());
 
     if (fos && fos->openedOk())
         return fos;
@@ -618,7 +623,7 @@ public:
         for (auto fileOrID : fileOrIDsToValidate)
         {
             jassert (fileOrID.isNotEmpty());
-            v.appendChild ({ IDs::PLUGIN, {{ IDs::fileOrID, fileOrID }} }, nullptr);
+            v.appendChild ({ IDs::PLUGIN, {{ IDs::fileOrID, fileOrID.trimCharactersAtEnd ("\\/") }} }, nullptr);
         }
 
         sendValueTreeToSlave (v);
