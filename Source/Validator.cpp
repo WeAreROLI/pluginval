@@ -15,6 +15,8 @@
 #include "Validator.h"
 #include "PluginTests.h"
 #include "CrashHandler.h"
+
+#include <signal.h>
 #include <numeric>
 
 #if JUCE_MAC

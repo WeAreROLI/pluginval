@@ -12,7 +12,6 @@
 
  ==============================================================================*/
 
-#include "../JuceLibraryCode/JuceHeader.h"
 #include "MainComponent.h"
 #include "Validator.h"
 #include "CommandLine.h"

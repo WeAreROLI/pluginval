@@ -14,7 +14,8 @@
 
 #pragma once
 
-#include "../JuceLibraryCode/JuceHeader.h"
+#include <JuceHeader.h>
+
 #include "Validator.h"
 #include "CrashHandler.h"
 
@@ -43,7 +44,7 @@ struct ConnectionStatus : public Component,
         auto r = getLocalBounds().toFloat();
 
         g.setColour ([this] {
-            switch (status)
+            switch (status.load())
             {
                 case Status::disconnected:  return Colours::darkred;
                 case Status::validating:    return Colours::orange;
@@ -51,7 +52,7 @@ struct ConnectionStatus : public Component,
                 case Status::complete:      return Colours::lightgreen;
             }
 
-			return Colours::darkred;
+            return Colours::darkred;
         }());
         g.fillEllipse (r);
 
