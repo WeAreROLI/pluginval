@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<JUCERPROJECT name="pluginval" projectType="guiapp" jucerVersion="5.4.5" id="IA2Ov0"
+<JUCERPROJECT name="pluginval" projectType="guiapp" jucerVersion="5.4.7" id="IA2Ov0"
               version="0.2.3" companyName="Tracktion" headerPath="../../../VSTSDK">
   <MAINGROUP id="zUhKLj" name="pluginval">
     <FILE id="gV5MZv" name="CHANGELIST.md" compile="0" resource="0" file="CHANGELIST.md"/>
@@ -64,7 +64,7 @@
         <MODULEPATH id="juce_audio_processors" path="modules/juce/modules"/>
       </MODULEPATHS>
     </XCODE_MAC>
-    <VS2017 targetFolder="Builds/VisualStudio2017" smallIcon="k3tDOE" bigIcon="k3tDOE">
+    <VS2019 targetFolder="Builds/VisualStudio2019" smallIcon="k3tDOE" bigIcon="k3tDOE">
       <CONFIGURATIONS>
         <CONFIGURATION isDebug="1" name="Debug" targetName="pluginval" useRuntimeLibDLL="0"/>
         <CONFIGURATION isDebug="0" name="Release" warningsAreErrors="1" targetName="pluginval"
@@ -82,7 +82,7 @@
         <MODULEPATH id="juce_audio_devices" path="modules/juce/modules"/>
         <MODULEPATH id="juce_audio_basics" path="modules/juce/modules"/>
       </MODULEPATHS>
-    </VS2017>
+    </VS2019>
     <LINUX_MAKE targetFolder="Builds/LinuxMakefile" smallIcon="k3tDOE" bigIcon="k3tDOE">
       <CONFIGURATIONS>
         <CONFIGURATION isDebug="1" name="Debug" targetName="pluginval"/>
