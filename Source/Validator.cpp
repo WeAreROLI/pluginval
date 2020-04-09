@@ -19,6 +19,7 @@
 
 #if JUCE_MAC
  #include <signal.h>
+ #include <unistd.h>
 #endif
 
 // Defined in Main.cpp, used to create the file logger as early as possible
