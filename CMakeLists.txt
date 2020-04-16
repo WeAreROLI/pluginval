@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.15)
 
-project(PluginVal VERSION 0.2.1)
+project(PluginVal VERSION 0.2.4)
 
 add_subdirectory(modules/JUCE)
 
@@ -12,6 +12,10 @@ juce_add_gui_app(PluginVal
 juce_generate_juce_header(PluginVal)
 
 target_compile_features(PluginVal PRIVATE cxx_std_14)
+
+set_target_properties(PluginVal PROPERTIES
+    C_VISIBILITY_PRESET hidden
+    CXX_VISIBILITY_PRESET hidden)
 
 target_sources(PluginVal PRIVATE
     Source/CommandLine.cpp
@@ -25,9 +29,13 @@ target_sources(PluginVal PRIVATE
     Source/Validator.cpp)
 
 target_compile_definitions(PluginVal PRIVATE
+    JUCE_PLUGINHOST_AU=1
+    JUCE_PLUGINHOST_LADSPA=1
+    JUCE_PLUGINHOST_VST3=1
     JUCE_USE_CURL=0
     JUCE_WEB_BROWSER=0)
 
 target_link_libraries(PluginVal PRIVATE
+    juce::juce_audio_devices
     juce::juce_audio_processors
-    juce::juce_audio_devices)
+    juce::juce_audio_utils)
