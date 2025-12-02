@@ -51,7 +51,7 @@ struct PluginsUnitTestRunner    : public UnitTestRunner,
         resetTimeout();
 
         if (timeoutInMs > 0)
-            startThread (1);
+            startThread (juce::Thread::Priority::high);
     }
 
     ~PluginsUnitTestRunner()
@@ -304,7 +304,7 @@ public:
 
         // Initialise the crash handler to clear any previous crash logs
         initialiseCrashHandler();
-        startThread (4);
+        startThread (juce::Thread::Priority::highest);
     }
 
     ~ValidatorSlaveProcess()
@@ -345,7 +345,7 @@ private:
         LogMessagesSender (ValidatorSlaveProcess& vsp)
             : Thread ("SlaveMessageSender"), owner (vsp)
         {
-            startThread (1);
+            startThread (juce::Thread::Priority::normal);
         }
 
         ~LogMessagesSender()

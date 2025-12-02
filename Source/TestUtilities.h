@@ -57,7 +57,7 @@ static inline Array<AudioProcessorParameter*> getNonBypassAutomatableParameters 
 template<typename UnaryFunction>
 void iterateAudioBuffer (AudioBuffer<float>& ab, UnaryFunction fn)
 {
-    float** sampleData = ab.getArrayOfWritePointers();
+    auto sampleData = ab.getArrayOfWritePointers();
 
     for (int c = ab.getNumChannels(); --c >= 0;)
         for (int s = ab.getNumSamples(); --s >= 0;)
@@ -69,7 +69,7 @@ static inline void fillNoise (AudioBuffer<float>& ab) noexcept
     Random r;
     ScopedNoDenormals noDenormals;
 
-    float** sampleData = ab.getArrayOfWritePointers();
+    auto sampleData = ab.getArrayOfWritePointers();
 
     for (int c = ab.getNumChannels(); --c >= 0;)
         for (int s = ab.getNumSamples(); --s >= 0;)

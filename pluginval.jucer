@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <JUCERPROJECT name="pluginval" projectType="guiapp" id="IA2Ov0" version="0.2.4"
-              companyName="Tracktion" headerPath="../../../VSTSDK" jucerFormatVersion="1">
+              companyName="Tracktion" headerPath="../../../VSTSDK" jucerFormatVersion="1"
+              defines="JUCE_MODAL_LOOPS_PERMITTED=1">
   <MAINGROUP id="zUhKLj" name="pluginval">
     <FILE id="gV5MZv" name="CHANGELIST.md" compile="0" resource="0" file="CHANGELIST.md"/>
     <GROUP id="{DF1CFAD6-E73F-2DAB-3957-D1F25BDD2E13}" name="Source">
@@ -64,6 +65,7 @@
         <MODULEPATH id="juce_audio_devices" path="modules/juce/modules"/>
         <MODULEPATH id="juce_audio_formats" path="modules/juce/modules"/>
         <MODULEPATH id="juce_audio_processors" path="modules/juce/modules"/>
+        <MODULEPATH id="juce_audio_processors_headless" path="modules/juce/modules"/>
       </MODULEPATHS>
     </XCODE_MAC>
     <VS2019 targetFolder="Builds/VisualStudio2019" smallIcon="k3tDOE" bigIcon="k3tDOE">
@@ -83,6 +85,7 @@
         <MODULEPATH id="juce_audio_formats" path="modules/juce/modules"/>
         <MODULEPATH id="juce_audio_devices" path="modules/juce/modules"/>
         <MODULEPATH id="juce_audio_basics" path="modules/juce/modules"/>
+        <MODULEPATH id="juce_audio_processors_headless" path="modules/juce/modules"/>
       </MODULEPATHS>
     </VS2019>
     <LINUX_MAKE targetFolder="Builds/LinuxMakefile" smallIcon="k3tDOE" bigIcon="k3tDOE">
@@ -101,6 +104,7 @@
         <MODULEPATH id="juce_audio_formats" path="modules/juce/modules"/>
         <MODULEPATH id="juce_audio_devices" path="modules/juce/modules"/>
         <MODULEPATH id="juce_audio_basics" path="modules/juce/modules"/>
+        <MODULEPATH id="juce_audio_processors_headless" path="modules/juce/modules"/>
       </MODULEPATHS>
     </LINUX_MAKE>
   </EXPORTFORMATS>
@@ -109,6 +113,8 @@
     <MODULE id="juce_audio_devices" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
     <MODULE id="juce_audio_formats" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
     <MODULE id="juce_audio_processors" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
+    <MODULE id="juce_audio_processors_headless" showAllCode="1" useLocalCopy="0"
+            useGlobalPath="0"/>
     <MODULE id="juce_core" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
     <MODULE id="juce_data_structures" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>
     <MODULE id="juce_events" showAllCode="1" useLocalCopy="0" useGlobalPath="0"/>

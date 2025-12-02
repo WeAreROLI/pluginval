@@ -51,7 +51,7 @@ PluginTests::PluginTests (const String& fileOrIdentifier, Options opts)
       options (opts)
 {
     jassert (isPositiveAndNotGreaterThan (options.strictnessLevel, 10));
-    formatManager.addDefaultFormats();
+    addDefaultFormatsToManager (formatManager);
 }
 
 PluginTests::PluginTests (const PluginDescription& desc, Options opts)

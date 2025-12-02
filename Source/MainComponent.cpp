@@ -192,7 +192,7 @@ void showOutputDirDialog()
 MainComponent::MainComponent (Validator& v)
     : validator (v)
 {
-    formatManager.addDefaultFormats();
+    addDefaultFormatsToManager (formatManager);
 
     const auto tabCol = getLookAndFeel().findColour (ResizableWindow::backgroundColourId);
     addAndMakeVisible (tabbedComponent);
